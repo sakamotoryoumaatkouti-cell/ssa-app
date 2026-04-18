@@ -1,0 +1,7 @@
+streamlit
+gspread
+google-genai
+google-oauth2
+toml
+requests
+beautifulsoup4
