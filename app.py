@@ -412,7 +412,7 @@ def page_input() -> None:
                 ):
                     st.caption(f"URL: {source_url}")
                     st.caption(f"種別: {content_type}")
-                    st.text(content[:2000])
+                    st.markdown(content[:2000])
 
     with tab2:
         dict_data = load_dictionary(sheet_id)
