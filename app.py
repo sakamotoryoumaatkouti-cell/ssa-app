@@ -7,6 +7,7 @@ QuestionBank から事前蓄積済みの問題を高速に出題する。
 
 import json
 import random
+import hashlib
 
 import gspread
 import streamlit as st
@@ -395,6 +396,11 @@ def page_home() -> None:
     if total > 0:
         if st.button("🚀 学習を開始する", key="start_quiz_btn", use_container_width=True):
             st.session_state["page"] = "クイズ"
+            st.session_state["quiz_index"] = 0
+            st.session_state["answered"] = False
+            st.session_state["selected_answer"] = None
+            st.session_state["quiz_seed"] = random.randint(0, 999999)
+            load_question_bank.clear()
             st.rerun()
     else:
         st.warning("⚠️ 問題がまだ生成されていません。generator.py を実行してください。")
@@ -462,6 +468,10 @@ def page_quiz() -> None:
         return
 
     # ─── 出題リスト構築 ───
+    if "quiz_seed" not in st.session_state:
+        st.session_state["quiz_seed"] = random.randint(0, 999999)
+    seed = st.session_state["quiz_seed"]
+
     priority_qs = [
         q for q in questions
         if str(q.get("Is_Priority", "False")).lower() == "true"
@@ -472,7 +482,11 @@ def page_quiz() -> None:
         if str(q.get("Is_Priority", "False")).lower() != "true"
         and int(q.get("Cumulative_Score", 0)) < 3
     ]
-    random.shuffle(normal_qs)
+    
+    def get_sort_key(q):
+        return hashlib.md5(f"{seed}_{q.get('_row_number')}".encode()).hexdigest()
+        
+    normal_qs.sort(key=get_sort_key)
     quiz_pool = priority_qs + normal_qs
 
     if not quiz_pool:
@@ -698,6 +712,7 @@ def main() -> None:
                     st.session_state["quiz_index"] = 0
                     st.session_state["answered"] = False
                     st.session_state["selected_answer"] = None
+                    st.session_state["quiz_seed"] = random.randint(0, 999999)
                     load_question_bank.clear()
                 st.rerun()
 
