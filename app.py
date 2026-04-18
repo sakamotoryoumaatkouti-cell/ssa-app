@@ -25,42 +25,43 @@ st.markdown("""
 <style>
     /* ── 全体のベース ── */
     .stApp {
-        background-color: #0E1117 !important;
+        background-color: #0B0F19 !important;
     }
     section[data-testid="stSidebar"] {
-        background-color: #1A1C23 !important;
+        background-color: #111827 !important;
     }
 
     /* ── フォント ── */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
     html, body, div, span, p, [class*="css"] {
         font-family: 'Noto Sans JP', sans-serif !important;
-        color: #FAFAFA !important;
+        color: #F3F4F6 !important;
     }
 
     /* ── 見出し ── */
     h1, h2, h3 {
         color: #FFFFFF !important;
         font-weight: 900 !important;
+        letter-spacing: 0.05em !important;
     }
 
     /* ── ボタン ── */
     .stButton > button {
-        background: linear-gradient(135deg, #1B5E20, #388E3C) !important;
+        background: linear-gradient(135deg, #2563EB, #1D4ED8) !important;
         color: #FFFFFF !important;
         font-weight: 700 !important;
         font-size: 1.1rem !important;
-        border: none !important;
-        border-radius: 12px !important;
+        border: 1px solid #3B82F6 !important;
+        border-radius: 8px !important;
         padding: 0.8rem 2rem !important;
         width: 100% !important;
         transition: all 0.2s ease !important;
-        box-shadow: 0 4px 12px rgba(27, 94, 32, 0.4) !important;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
     }
     .stButton > button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 16px rgba(27, 94, 32, 0.6) !important;
-        background: linear-gradient(135deg, #2E7D32, #4CAF50) !important;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4) !important;
+        background: linear-gradient(135deg, #3B82F6, #2563EB) !important;
     }
     .stButton > button:active {
         transform: translateY(0) !important;
@@ -68,44 +69,46 @@ st.markdown("""
 
     /* ── 正解・不正解カード ── */
     .correct-card {
-        background: linear-gradient(135deg, #0B2A10, #144018);
-        border-left: 6px solid #4CAF50;
-        border-radius: 12px;
+        background: linear-gradient(135deg, #064E3B, #022C22);
+        border-left: 5px solid #10B981;
+        border-radius: 8px;
         padding: 1.2rem;
         margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
     .wrong-card {
-        background: linear-gradient(135deg, #310D12, #4A141A);
-        border-left: 6px solid #F44336;
-        border-radius: 12px;
+        background: linear-gradient(135deg, #4C1D95, #2E1065);
+        border-left: 5px solid #8B5CF6;
+        border-radius: 8px;
         padding: 1.2rem;
         margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
     .explanation-card {
-        background: #1A1C23;
-        border-left: 6px solid #2196F3;
-        border-radius: 12px;
+        background: #1F2937;
+        border-left: 5px solid #3B82F6;
+        border-radius: 8px;
         padding: 1.2rem;
         margin: 1rem 0;
     }
 
     /* ── 進捗バー ── */
     .progress-bar-bg {
-        background: #2D333B;
-        border-radius: 10px;
-        height: 28px;
+        background: #374151;
+        border-radius: 8px;
+        height: 24px;
         overflow: hidden;
         margin: 0.5rem 0;
     }
     .progress-bar-fill {
-        background: linear-gradient(90deg, #1B5E20, #4CAF50);
+        background: linear-gradient(90deg, #3B82F6, #60A5FA);
         height: 100%;
-        border-radius: 10px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
-        font-weight: 700;
+        color: #111827;
+        font-weight: 900;
         font-size: 0.85rem;
         min-width: 40px;
         transition: width 0.5s ease;
@@ -115,27 +118,29 @@ st.markdown("""
     .difficulty-badge {
         display: inline-block;
         padding: 4px 12px;
-        border-radius: 20px;
+        border-radius: 12px;
         font-weight: 700;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         margin-bottom: 0.5rem;
+        border: 1px solid rgba(255,255,255,0.1);
     }
-    .diff-1 { background: #0D47A1; color: #BBDEFB; }
-    .diff-2 { background: #E65100; color: #FFE0B2; }
-    .diff-3 { background: #B71C1C; color: #FFCDD2; }
+    .diff-1 { background: #1E3A8A; color: #BFDBFE; }
+    .diff-2 { background: #701A75; color: #F5D0FE; }
+    .diff-3 { background: #991B1B; color: #FECACA; }
 
     /* ── クイズ選択肢ボタン ── */
     .quiz-option-btn > button {
-        background: #1A1C23 !important;
-        color: #FAFAFA !important;
-        border: 2px solid #424242 !important;
+        background: #1F2937 !important;
+        color: #F3F4F6 !important;
+        border: 1px solid #4B5563 !important;
+        border-radius: 8px !important;
         text-align: left !important;
         font-size: 1rem !important;
-        padding: 1rem !important;
+        padding: 1.2rem !important;
     }
     .quiz-option-btn > button:hover {
-        border-color: #4CAF50 !important;
-        background: #0B2A10 !important;
+        border-color: #60A5FA !important;
+        background: #1E3A8A !important;
     }
 
     /* ── モバイル最適化 ── */
@@ -149,20 +154,21 @@ st.markdown("""
 
     /* ── メトリクスカード ── */
     .metric-card {
-        background: #1A1C23;
-        border-radius: 16px;
+        background: #1F2937;
+        border-radius: 12px;
         padding: 1.2rem;
         text-align: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        border: 1px solid #374151;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
     .metric-value {
         font-size: 2.5rem;
         font-weight: 900;
-        color: #4CAF50;
+        color: #60A5FA;
     }
     .metric-label {
         font-size: 0.85rem;
-        color: #BDBDBD;
+        color: #9CA3AF;
         margin-top: 0.3rem;
     }
 </style>
@@ -492,7 +498,22 @@ def page_quiz() -> None:
     if standard:
         st.caption(f"📋 {standard}")
 
-    st.markdown(f"### {q.get('Question_Text', '(問題文なし)')}")
+    # ─── 文字化け修正ヘルパー ───
+    def clean_text(text: str) -> str:
+        if not text: return text
+        replacements = {
+            "keyboard_double_arrow_right": "⇒",
+            "arrow_right": "→",
+            "arrow_down": "↓",
+            "arrow_up": "↑",
+            "arrow_left": "←",
+            "&rarr;": "→"
+        }
+        for k, v in replacements.items():
+            text = text.replace(k, v)
+        return text
+
+    st.markdown(f"### {clean_text(q.get('Question_Text', '(問題文なし)'))}")
 
     # 選択肢をパース
     options_raw = q.get("Options", "[]")
@@ -503,8 +524,10 @@ def page_quiz() -> None:
             options = [options_raw]
     else:
         options = list(options_raw) if options_raw else []
+        
+    options = [clean_text(opt) for opt in options]
 
-    answer = q.get("Answer", "")
+    answer = clean_text(q.get("Answer", ""))
     row_num = q.get("_row_number", -1)
     current_score = int(q.get("Cumulative_Score", 0))
 
@@ -553,14 +576,14 @@ def page_quiz() -> None:
                 st.toast(f"⚠️ スコア保存エラー: {e}")
 
         # 解説表示
-        explanation = q.get("Explanation", "")
+        explanation = clean_text(q.get("Explanation", ""))
         if explanation:
             st.markdown(f"""
             <div class="explanation-card">
-                <div style="font-weight: 700; margin-bottom: 0.5rem;">
+                <div style="font-weight: 700; margin-bottom: 0.5rem; color: #60A5FA;">
                     📘 アセッサ視点の解説
                 </div>
-                <div>{explanation}</div>
+                <div style="color: #D1D5DB;">{explanation}</div>
             </div>
             """, unsafe_allow_html=True)
 
