@@ -112,10 +112,13 @@ def get_unused_sources(spreadsheet: gspread.Spreadsheet, used_ids: set[str], cou
         for r in raw_ws.get_all_records():
             sid = str(r.get("Source_ID", ""))
             if sid and sid not in used_ids:
+                c_type = r.get("Content_Type", "text")
+                if c_type == "image":
+                    continue
                 candidates.append({
                     "source_id": sid,
                     "source_url": r.get("Source_URL", ""),
-                    "content_type": r.get("Content_Type", "text"),
+                    "content_type": c_type,
                     "content": str(r.get("Content", ""))[:3000],
                 })
     except Exception as e: print(f"  ⚠️ RawDataエラー: {e}")
