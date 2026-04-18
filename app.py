@@ -397,55 +397,12 @@ def page_input() -> None:
     tab1, tab2 = st.tabs(["規格データ (RawData)", "用語辞書 (Dictionary)"])
 
     with tab1:
-        raw_data = load_raw_data(sheet_id)
-        if not raw_data:
-            st.info("データがありません。scraper.py を実行してください。")
-        else:
-            # 規格ドキュメントの一覧を取得
-            doc_urls = []
-            for r in raw_data:
-                u = str(r.get("Source_URL", ""))
-                if u and u not in doc_urls:
-                    doc_urls.append(u)
-
-            col_a, col_b = st.columns([1, 1])
-            with col_a:
-                selected_doc = st.selectbox("📖 規格を選ぶ", ["(すべて)"] + doc_urls)
-            with col_b:
-                search = st.text_input(
-                    "🔍 検索", key="raw_search",
-                    placeholder="キーワード…"
-                )
-
-            filtered = raw_data
-            if selected_doc != "(すべて)":
-                filtered = [r for r in filtered if r.get("Source_URL", "") == selected_doc]
-                
-            if search:
-                search_lower = search.lower()
-                filtered = [
-                    r for r in filtered
-                    if search_lower in str(r.get("Content", "")).lower()
-                ]
-                
-            st.caption(f"表示: {len(filtered)} 件")
-
-            # チャンクごとに目次として表示
-            for item in filtered[:200]:  # 軽量化のため200件制限
-                content = item.get("Content", "")
-                
-                # チャンクの最初の行をタイトル（見出し）として抽出
-                lines = content.strip().split('\n')
-                first_line = lines[0][:80] if lines else "（本文）"
-                title = first_line.replace("#", "").strip()
-                if not title:
-                    title = "（本文セクション）"
-                    
-                badge = "📊" if item.get("Content_Type") == "table" else "📝"
-                
-                with st.expander(f"{badge} {title}"):
-                    st.caption(f"URL: {item.get('Source_URL', '')}")
-                    st.markdown(content)
+        st.info("規格原文は以下のリンクから外部サイト（kikakurui.com）にて直接閲覧してください。")
+        st.markdown("""
+        - 📘 [ISO 13849-1 (JIS B 9705-1)](https://kikakurui.com/b9/B9705-1-2019-01.html)
+        - 📘 [ISO 13849-2 (JIS B 9705-2)](https://kikakurui.com/b9/B9705-2-2019-01.html)
+        - 📘 [ISO 12100 (JIS B 9700)](https://kikakurui.com/b9/B9700-2013-01.html)
+        """)
 
     with tab2:
         dict_data = load_dictionary(sheet_id)
