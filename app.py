@@ -33,7 +33,12 @@ st.markdown("""
 
     /* ── フォント ── */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
-    html, body, div, span, p, [class*="css"] {
+    
+    body {
+        font-family: 'Noto Sans JP', sans-serif;
+        color: #F3F4F6;
+    }
+    .stMarkdown, .stText, p, li, div[data-testid="stMarkdownContainer"] {
         font-family: 'Noto Sans JP', sans-serif !important;
         color: #F3F4F6 !important;
     }
@@ -498,22 +503,7 @@ def page_quiz() -> None:
     if standard:
         st.caption(f"📋 {standard}")
 
-    # ─── 文字化け修正ヘルパー ───
-    def clean_text(text: str) -> str:
-        if not text: return text
-        replacements = {
-            "keyboard_double_arrow_right": "⇒",
-            "arrow_right": "→",
-            "arrow_down": "↓",
-            "arrow_up": "↑",
-            "arrow_left": "←",
-            "&rarr;": "→"
-        }
-        for k, v in replacements.items():
-            text = text.replace(k, v)
-        return text
-
-    st.markdown(f"### {clean_text(q.get('Question_Text', '(問題文なし)'))}")
+    st.markdown(f"### {q.get('Question_Text', '(問題文なし)')}")
 
     # 選択肢をパース
     options_raw = q.get("Options", "[]")
@@ -524,10 +514,8 @@ def page_quiz() -> None:
             options = [options_raw]
     else:
         options = list(options_raw) if options_raw else []
-        
-    options = [clean_text(opt) for opt in options]
 
-    answer = clean_text(q.get("Answer", ""))
+    answer = q.get("Answer", "")
     row_num = q.get("_row_number", -1)
     current_score = int(q.get("Cumulative_Score", 0))
 
@@ -576,7 +564,7 @@ def page_quiz() -> None:
                 st.toast(f"⚠️ スコア保存エラー: {e}")
 
         # 解説表示
-        explanation = clean_text(q.get("Explanation", ""))
+        explanation = q.get("Explanation", "")
         if explanation:
             st.markdown(f"""
             <div class="explanation-card">
