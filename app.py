@@ -25,28 +25,28 @@ st.markdown("""
 <style>
     /* ── 全体のベース ── */
     .stApp {
-        background-color: #FFFFFF !important;
+        background-color: #0E1117 !important;
     }
     section[data-testid="stSidebar"] {
-        background-color: #F8F9FA !important;
+        background-color: #1A1C23 !important;
     }
 
     /* ── フォント ── */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
-    html, body, [class*="css"] {
+    html, body, div, span, p, [class*="css"] {
         font-family: 'Noto Sans JP', sans-serif !important;
-        color: #1A1A1A !important;
+        color: #FAFAFA !important;
     }
 
     /* ── 見出し ── */
     h1, h2, h3 {
-        color: #0D0D0D !important;
+        color: #FFFFFF !important;
         font-weight: 900 !important;
     }
 
     /* ── ボタン ── */
     .stButton > button {
-        background: linear-gradient(135deg, #1B5E20, #2E7D32) !important;
+        background: linear-gradient(135deg, #1B5E20, #388E3C) !important;
         color: #FFFFFF !important;
         font-weight: 700 !important;
         font-size: 1.1rem !important;
@@ -55,11 +55,12 @@ st.markdown("""
         padding: 0.8rem 2rem !important;
         width: 100% !important;
         transition: all 0.2s ease !important;
-        box-shadow: 0 4px 12px rgba(27, 94, 32, 0.3) !important;
+        box-shadow: 0 4px 12px rgba(27, 94, 32, 0.4) !important;
     }
     .stButton > button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 16px rgba(27, 94, 32, 0.4) !important;
+        box-shadow: 0 6px 16px rgba(27, 94, 32, 0.6) !important;
+        background: linear-gradient(135deg, #2E7D32, #4CAF50) !important;
     }
     .stButton > button:active {
         transform: translateY(0) !important;
@@ -67,22 +68,22 @@ st.markdown("""
 
     /* ── 正解・不正解カード ── */
     .correct-card {
-        background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
-        border-left: 6px solid #2E7D32;
+        background: linear-gradient(135deg, #0B2A10, #144018);
+        border-left: 6px solid #4CAF50;
         border-radius: 12px;
         padding: 1.2rem;
         margin: 1rem 0;
     }
     .wrong-card {
-        background: linear-gradient(135deg, #FFEBEE, #FFCDD2);
-        border-left: 6px solid #C62828;
+        background: linear-gradient(135deg, #310D12, #4A141A);
+        border-left: 6px solid #F44336;
         border-radius: 12px;
         padding: 1.2rem;
         margin: 1rem 0;
     }
     .explanation-card {
-        background: #F5F5F5;
-        border-left: 6px solid #1565C0;
+        background: #1A1C23;
+        border-left: 6px solid #2196F3;
         border-radius: 12px;
         padding: 1.2rem;
         margin: 1rem 0;
@@ -90,7 +91,7 @@ st.markdown("""
 
     /* ── 進捗バー ── */
     .progress-bar-bg {
-        background: #E0E0E0;
+        background: #2D333B;
         border-radius: 10px;
         height: 28px;
         overflow: hidden;
@@ -119,22 +120,22 @@ st.markdown("""
         font-size: 0.9rem;
         margin-bottom: 0.5rem;
     }
-    .diff-1 { background: #E3F2FD; color: #1565C0; }
-    .diff-2 { background: #FFF3E0; color: #E65100; }
-    .diff-3 { background: #FCE4EC; color: #C62828; }
+    .diff-1 { background: #0D47A1; color: #BBDEFB; }
+    .diff-2 { background: #E65100; color: #FFE0B2; }
+    .diff-3 { background: #B71C1C; color: #FFCDD2; }
 
     /* ── クイズ選択肢ボタン ── */
     .quiz-option-btn > button {
-        background: #FAFAFA !important;
-        color: #1A1A1A !important;
-        border: 2px solid #BDBDBD !important;
+        background: #1A1C23 !important;
+        color: #FAFAFA !important;
+        border: 2px solid #424242 !important;
         text-align: left !important;
         font-size: 1rem !important;
         padding: 1rem !important;
     }
     .quiz-option-btn > button:hover {
-        border-color: #1B5E20 !important;
-        background: #F1F8E9 !important;
+        border-color: #4CAF50 !important;
+        background: #0B2A10 !important;
     }
 
     /* ── モバイル最適化 ── */
@@ -148,20 +149,20 @@ st.markdown("""
 
     /* ── メトリクスカード ── */
     .metric-card {
-        background: #F8F9FA;
+        background: #1A1C23;
         border-radius: 16px;
         padding: 1.2rem;
         text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     .metric-value {
         font-size: 2.5rem;
         font-weight: 900;
-        color: #1B5E20;
+        color: #4CAF50;
     }
     .metric-label {
         font-size: 0.85rem;
-        color: #757575;
+        color: #BDBDBD;
         margin-top: 0.3rem;
     }
 </style>
@@ -491,23 +492,6 @@ def page_quiz() -> None:
     if standard:
         st.caption(f"📋 {standard}")
 
-    # ─── 図の表示（Image_URLがある場合） ───
-    image_url = q.get("Image_URL", "")
-    if image_url:
-        try:
-            st.image(image_url, caption="📊 参照図（規格より）", use_container_width=True)
-            # スマホで細部を確認できるよう、別タブで開くリンクも表示
-            st.markdown(
-                f'<div style="text-align: right; margin-top: -0.5rem; margin-bottom: 0.5rem;">'
-                f'<a href="{image_url}" target="_blank" style="font-size:0.8rem; color:#1565C0;">🔍 拡大して見る</a>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        except Exception:
-            st.markdown(
-                f"📊 **参照図**: [図を別タブで開く（ピンチズーム可）]({image_url})",
-            )
-
     st.markdown(f"### {q.get('Question_Text', '(問題文なし)')}")
 
     # 選択肢をパース
@@ -589,6 +573,15 @@ def page_quiz() -> None:
             # キャッシュをクリアして最新スコアを反映
             load_question_bank.clear()
             st.rerun()
+
+    # ─── 中断ボタン（未回答・回答済み問わず常に最下部に表示） ───
+    st.markdown("---")
+    if st.button("🏠 中断してホームに戻る", key="interrupt_quiz_btn"):
+        st.session_state["page"] = "ホーム"
+        st.session_state["quiz_index"] = 0
+        st.session_state["answered"] = False
+        st.session_state["selected_answer"] = None
+        st.rerun()
 
 
 # ─── ページ: 設定 ────────────────────────────────────
