@@ -1,7 +1,7 @@
 streamlit
 gspread
 google-genai
-google-oauth2
+google-auth
 toml
 requests
 beautifulsoup4
