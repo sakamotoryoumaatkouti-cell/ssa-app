@@ -45,6 +45,17 @@ st.markdown("""
     div[data-testid="stDecoration"] {
         display: none !important;
     }
+    
+    /* ── 右下のGitHub・Streamlitバッジ等も隠す ── */
+    #MainMenu, footer {
+        visibility: hidden !important;
+    }
+    .viewerBadge_container__1QSob, .streamlit-viewer-badge {
+        display: none !important;
+    }
+    [data-testid="stStatusWidget"] {
+        display: none !important;
+    }
 
     /* ── フォント ── */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
@@ -282,6 +293,11 @@ def update_setting(key: str, value: str) -> None:
 # ─── 認証ゲート ──────────────────────────────────────
 def check_password() -> bool:
     """パスワード認証。通過済みならTrue。"""
+    # スマホ等のリロード対策：URLパラメータで認証状態を維持する
+    if "auth_token" in st.query_params and st.query_params["auth_token"] == "success":
+        st.session_state["authenticated"] = True
+        return True
+
     if st.session_state.get("authenticated"):
         return True
 
@@ -292,6 +308,7 @@ def check_password() -> bool:
     if st.button("ログイン", key="login_btn"):
         if password == st.secrets.get("APP_PASSWORD", ""):
             st.session_state["authenticated"] = True
+            st.query_params["auth_token"] = "success"
             st.rerun()
         else:
             st.error("❌ パスワードが正しくありません。")
@@ -390,8 +407,12 @@ def page_home() -> None:
 
 # ─── ページ: インプット ──────────────────────────────
 def page_input() -> None:
-    st.markdown("# 📖 用語・規格データ閲覧")
+    # 戻るボタンを上部に配置
+    if st.button("🏠 ホームに戻る", key="back_home_btn", use_container_width=True):
+        st.session_state["page"] = "ホーム"
+        st.rerun()
 
+    st.markdown("# 📖 用語・規格データ閲覧")
     sheet_id = st.secrets["SPREADSHEET_ID"]
 
     tab1, tab2 = st.tabs(["規格データ (RawData)", "用語辞書 (Dictionary)"])
