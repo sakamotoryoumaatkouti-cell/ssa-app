@@ -149,44 +149,9 @@ def remove_noise_elements(soup: BeautifulSoup) -> None:
             elem.decompose()
 
 
-def _table_to_text(table_tag: Tag) -> str:
-    """<table> タグをセルの内容を保ちつつテキスト形式に変換する。"""
-    rows: list[str] = []
-    for tr in table_tag.find_all("tr"):
-        cols = [
-            cell.get_text(" ", strip=True)
-            for cell in tr.find_all(["td", "th"], recursive=False)
-        ]
-        if any(cols):
-            rows.append(" | ".join(cols))
-    return "\n".join(rows)
-
-
-def _is_decorative_image(alt: str, src: str) -> bool:
-    """装飾画像（アイコン・ロゴ等）を除外する判定。"""
-    kws = ["icon", "logo", "banner", "btn", "arrow", "spacer", "blank"]
-    return not alt and any(k in src.lower() for k in kws)
-
-
-def _prev_context(tag: Tag, max_chars: int = 100) -> str:
-    """タグの直前にある最も近いテキストブロックを文脈として返す。"""
-    for prev in tag.find_all_previous(["p", "h1", "h2", "h3", "h4", "h5"]):
-        t = prev.get_text(" ", strip=True)
-        if len(t) > 5:
-            return t[:max_chars]
-    return ""
-
-
 def extract_sections(soup: BeautifulSoup, base_url: str) -> list[dict]:
     """
-    規格本文を「Geminiが問題を生成しやすい粒度のチャンク」として抽出する。
-
-    戦略:
-    ① テーブル  → 個別に1行として保存 (構造保持)
-    ② 図(img)   → alt/URLを文脈付きで1行として保存
-    ③ 本文テキスト
-       → ISO番号付き見出し(3.1.2, 4.2 等)で分割
-       → さらに1000〜1500字のチャンクに分割して保存
+    規格本文を「文脈を保ったMarkdown風の読みやすいテキスト」に変換し、チャンク化する。
     """
     results: list[dict] = []
 
@@ -203,67 +168,70 @@ def extract_sections(soup: BeautifulSoup, base_url: str) -> list[dict]:
         return results
 
     # ────────────────────────────────────────────────────
-    # ① テーブルを個別抽出 → DOMから除去
+    # ① DOMの事前整形（Markdown風にタグをプレーンテキスト化）
     # ────────────────────────────────────────────────────
-    for table in content_area.find_all("table"):
-        if table.find_parent("table"):
-            continue  # ネストされたサブテーブルはスキップ
-        table_text = _table_to_text(table)
-        if len(table_text) > 20:
-            ctx = _prev_context(table)
-            header = f"【表: {ctx}】\n" if ctx else "【表】\n"
-            results.append({"type": "table", "content": header + table_text})
-        table.decompose()
-
-    # ────────────────────────────────────────────────────
-    # ② 図(img)を個別抽出 → DOMから除去
-    # ────────────────────────────────────────────────────
+    
+    # 画像は邪魔になるので全て削除（本文テキストに集中する）
     for img in content_area.find_all("img"):
-        alt = img.get("alt", "")
-        src = img.get("src", "")
-        if src and not src.startswith("http"):
-            src = urljoin(base_url, src)
-        if _is_decorative_image(alt, src):
-            img.decompose()
-            continue
-        if alt or src:
-            ctx = _prev_context(img, max_chars=80)
-            content = f"【図】{ctx}\n説明(alt): {alt}\n画像URL: {src}"
-            results.append({"type": "image", "content": content})
         img.decompose()
+        
+    # 余計なスクリプト等も削除
+    for script in content_area.find_all(["script", "style", "noscript"]):
+        script.decompose()
+
+    # テーブルのMarkdown化
+    for table in content_area.find_all("table"):
+        rows = table.find_all("tr")
+        for i, tr in enumerate(rows):
+            cells = [td.get_text(" ", strip=True) for td in tr.find_all(["td", "th"])]
+            if any(cells):
+                row_str = "| " + " | ".join(cells) + " |"
+                # 1行目の後にMarkdownの区切り線を追加
+                if i == 0:
+                    sep = "| " + " | ".join(["---"] * len(cells)) + " |"
+                    row_str += "\n" + sep
+                tr.replace_with("\n" + row_str + "\n")
+        table.insert_before("\n\n")
+        table.insert_after("\n\n")
+
+    # 見出しとリストのMarkdown化
+    for h in content_area.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+        level = int(h.name[1])
+        h.insert_before(f"\n\n{'#' * level} ")
+        h.insert_after("\n\n")
+
+    for li in content_area.find_all("li"):
+        li.insert_before("\n- ")
 
     # ────────────────────────────────────────────────────
-    # ③ 残りの本文テキストを取得してクリーニング
+    # ② 余分な空白の除去とノイズクリーニング
     # ────────────────────────────────────────────────────
     full_text = content_area.get_text("\n", strip=True)
 
-    # ノイズ除去
+    # 連続する改行をきれいに（空行は1行までに制限）
     full_text = re.sub(r"\n{3,}", "\n\n", full_text)
-    full_text = re.sub(r"(?m)^\s*\d{1,3}\s*$", "", full_text)    # ページ番号行
-    full_text = re.sub(
-        r"2019年7月1日の法改正.*?読み替えてください。\n?", "", full_text
-    )
+    
+    # ノイズ（ページ番号、ヘッダー/フッターの定型文）を除去
+    full_text = re.sub(r"(?m)^\s*\d{1,3}\s*$", "", full_text)
+    full_text = re.sub(r"2019年7月1日の法改正.*?読み替えてください。\n?", "", full_text)
 
     # ────────────────────────────────────────────────────
-    # ④ ISO規格の番号付き見出しで分割点を検出
-    #    例: "3.1.2\n用語定義" や "4  設計上の考慮事項"
+    # ③ ISO規格の番号付き見出しで分割点を検出してチャンク化
     # ────────────────────────────────────────────────────
     SECTION_PATTERN = re.compile(
         r"(?m)"
-        r"^(\d{1,2}(?:\.\d{1,2}){0,3})\s*\n"    # "4.2.1\n" 形式
-        r"|^(\d{1,2}(?:\.\d{1,2}){0,3})\s{2,}"   # "4.2.1  " 形式（空白2つ以上）
+        r"^(?:#+\s*)?(\d{1,2}(?:\.\d{1,2}){0,3})\s*\n"    # "# 4.2.1\n" または "4.2.1\n"
+        r"|^(?:#+\s*)?(\d{1,2}(?:\.\d{1,2}){0,3})\s{2,}"   # 後の空白2つ以上
     )
 
     split_positions = [0]
     for m in SECTION_PATTERN.finditer(full_text):
         pos = m.start()
-        if pos - split_positions[-1] > 200:
+        # 細かすぎる分割を防ぐ（最低文字数）
+        if pos - split_positions[-1] > 300:
             split_positions.append(pos)
     split_positions.append(len(full_text))
 
-    # ────────────────────────────────────────────────────
-    # ⑤ セクションを 1000〜1500字 のチャンクに分割して保存
-    # ────────────────────────────────────────────────────
     for i in range(len(split_positions) - 1):
         section = full_text[split_positions[i]:split_positions[i + 1]].strip()
         if len(section) < CHUNK_MIN:
@@ -272,18 +240,19 @@ def extract_sections(soup: BeautifulSoup, base_url: str) -> list[dict]:
         if len(section) <= CHUNK_TARGET * 1.5:
             results.append({"type": "text", "content": section})
         else:
-            # 改行位置でチャンク化
+            # 大きすぎるセクションは改行位置で強制分割
             lines = section.split("\n")
             chunk: list[str] = []
             chunk_len = 0
             for line in lines:
                 chunk.append(line)
                 chunk_len += len(line)
-                if chunk_len >= CHUNK_TARGET:
+                if chunk_len >= CHUNK_TARGET and not line.strip().startswith("|"):
+                    # 表の途中( | )では途中で切らない工夫
                     results.append({"type": "text", "content": "\n".join(chunk)})
                     chunk = []
                     chunk_len = 0
-            if chunk and chunk_len >= CHUNK_MIN:
+            if chunk:
                 results.append({"type": "text", "content": "\n".join(chunk)})
 
     return results
