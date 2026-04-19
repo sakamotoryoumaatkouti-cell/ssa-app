@@ -25,7 +25,7 @@ BATCH_SIZE = 5          # 1回のAPI呼び出しで生成する問題数
 SLEEP_BETWEEN = 60      # 各バッチ間の待機秒数（無料枠レート制限回避）
 
 # 1.5-flash または 2.0-flash を使用可能
-MODEL_ID = "gemini-2.5-flash" 
+MODEL_ID = "gemini-2.0-flash" 
 
 SYSTEM_PROMPT = """\
 あなたは機械安全分野の最高峰であるセーフティシニアアセッサ（SSA）を育成するための試験作成委員です。
