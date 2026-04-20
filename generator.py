@@ -23,9 +23,13 @@ SCOPES = [
 
 BATCH_SIZE = 5          # 1回のAPI呼び出しで生成する問題数
 SLEEP_BETWEEN = 60      # 各バッチ間の待機秒数（無料枠レート制限回避）
+MAX_RETRIES = 3         # 503エラー時の最大リトライ回数
+RETRY_BASE_WAIT = 30    # リトライ時の基本待機秒数（指数バックオフ）
 
-# 最初に使用していたモデル (1日20リクエストまで)
-MODEL_ID = "gemini-2.5-flash" 
+# プライマリモデル
+MODEL_ID = "gemini-2.5-flash"
+# フォールバックモデル（プライマリが503の場合に使用）
+FALLBACK_MODEL_ID = "gemini-2.0-flash"
 
 SYSTEM_PROMPT = """\
 あなたは機械安全分野の最高峰であるセーフティシニアアセッサ（SSA）を育成するための試験作成委員です。
@@ -175,48 +179,75 @@ def main() -> None:
         prompt_parts = [f"--- 素材 {i+1} ---\nSource_ID: {s['source_id']}\n種別: {s['content_type']}\n内容: {s['content']}" for i, s in enumerate(sources)]
         user_prompt = "以下の素材に基づいて問題を生成してください:\n\n" + "\n\n".join(prompt_parts)
 
-        print(f"  📤 Gemini {MODEL_ID} にリクエスト中...")
-        try:
-            response = client.models.generate_content(
-                model=MODEL_ID,
-                contents=user_prompt,
-                config={
-                    "system_instruction": SYSTEM_PROMPT.format(batch_size=len(sources)),
-                    "response_mime_type": "application/json",
-                }
-            )
-            
-            # response.text が直接 JSON 配列になる（response_mime_type指定のおかげ）
-            questions = json.loads(response.text)
-            
-            rows = []
-            for q in questions:
-                sid = q.get("source_id", "unknown")
-                s_url = next((s["source_url"] for s in sources if s["source_id"] == sid), "")
-                img_url = next((extract_image_url(s["content"]) for s in sources if s["source_id"] == sid and s["content_type"] == "image"), "")
-                
-                rows.append([
-                    f"q_{id_counter:04d}", 
-                    sid, 
-                    url_to_standard_name(s_url),
-                    int(q.get("difficulty", 1)),
-                    q.get("question", ""),
-                    json.dumps(q.get("options", []), ensure_ascii=False),
-                    q.get("answer", ""),
-                    q.get("explanation", ""),
-                    0, "False", img_url
-                ])
-                id_counter += 1
-                current_count += 1
-                used_source_ids.add(sid)
+        # --- リトライ付き API 呼び出し ---
+        response = None
+        models_to_try = [MODEL_ID, FALLBACK_MODEL_ID]
 
-            if rows:
-                qb_ws.append_rows(rows, value_input_option="RAW")
-                print(f"  💾 {len(rows)}問を保存しました。({current_count}/{target_count})")
+        for model_id in models_to_try:
+            for attempt in range(1, MAX_RETRIES + 1):
+                print(f"  📤 Gemini {model_id} にリクエスト中... (試行 {attempt}/{MAX_RETRIES})")
+                try:
+                    response = client.models.generate_content(
+                        model=model_id,
+                        contents=user_prompt,
+                        config={
+                            "system_instruction": SYSTEM_PROMPT.format(batch_size=len(sources)),
+                            "response_mime_type": "application/json",
+                        }
+                    )
+                    print(f"  ✅ {model_id} から応答を受信しました。")
+                    break  # 成功したらリトライループを抜ける
+                except Exception as e:
+                    error_str = str(e)
+                    print(f"  ❌ エラー (試行 {attempt}): {error_str}")
+                    if "503" in error_str or "UNAVAILABLE" in error_str or "429" in error_str:
+                        wait_time = RETRY_BASE_WAIT * (2 ** (attempt - 1))  # 30s, 60s, 120s
+                        print(f"  ⏳ {wait_time}秒待機してリトライします...")
+                        time.sleep(wait_time)
+                    else:
+                        # 503/429 以外のエラーはリトライしない
+                        break
             
-        except Exception as e:
-            print(f"  ❌ エラー: {e}")
-            time.sleep(10) # 短い待機でリトライ
+            if response is not None:
+                break  # 成功したらモデルループも抜ける
+            
+            if model_id == MODEL_ID:
+                print(f"  🔄 {MODEL_ID} が利用不可のため、フォールバック ({FALLBACK_MODEL_ID}) を試行します...")
+
+        # --- レスポンス処理 ---
+        if response is None:
+            print(f"  ❌ 全モデル・全リトライが失敗しました。次回のcron実行を待ちます。")
+        else:
+            try:
+                questions = json.loads(response.text)
+                
+                rows = []
+                for q in questions:
+                    sid = q.get("source_id", "unknown")
+                    s_url = next((s["source_url"] for s in sources if s["source_id"] == sid), "")
+                    img_url = next((extract_image_url(s["content"]) for s in sources if s["source_id"] == sid and s["content_type"] == "image"), "")
+                    
+                    rows.append([
+                        f"q_{id_counter:04d}", 
+                        sid, 
+                        url_to_standard_name(s_url),
+                        int(q.get("difficulty", 1)),
+                        q.get("question", ""),
+                        json.dumps(q.get("options", []), ensure_ascii=False),
+                        q.get("answer", ""),
+                        q.get("explanation", ""),
+                        0, "False", img_url
+                    ])
+                    id_counter += 1
+                    current_count += 1
+                    used_source_ids.add(sid)
+
+                if rows:
+                    qb_ws.append_rows(rows, value_input_option="RAW")
+                    print(f"  💾 {len(rows)}問を保存しました。({current_count}/{target_count})")
+                    
+            except Exception as e:
+                print(f"  ❌ レスポンス解析エラー: {e}")
 
         # GitHub Actions環境では1バッチで終了（毎時のcronに任せる）
         if os.environ.get("GITHUB_ACTIONS") == "true":
