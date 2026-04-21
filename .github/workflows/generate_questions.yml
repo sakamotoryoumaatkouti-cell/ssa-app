@@ -2,8 +2,10 @@ name: Auto Generate SSA Questions
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    # 毎時42分に実行 (UTC。混雑を避けるためキリのよくない時間に設定)
+    - cron: '42 * * * *'
   workflow_dispatch:
+    # 手動実行用ボタンも有効にしておく
 
 jobs:
   generate:
@@ -24,6 +26,8 @@ jobs:
 
     - name: Run generator
       env:
+        # GITHUB_ACTIONS=true は標準で設定されているが明示的に利用
+        # シークレットは GitHub Secrets から取り出して環境変数にセットする
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
         GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
