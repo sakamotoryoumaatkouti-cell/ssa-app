@@ -472,22 +472,24 @@ def page_quiz() -> None:
         st.session_state["quiz_seed"] = random.randint(0, 999999)
     seed = st.session_state["quiz_seed"]
 
-    priority_qs = [
-        q for q in questions
-        if str(q.get("Is_Priority", "False")).lower() == "true"
-        and int(q.get("Cumulative_Score", 0)) < 3
-    ]
-    normal_qs = [
-        q for q in questions
-        if str(q.get("Is_Priority", "False")).lower() != "true"
-        and int(q.get("Cumulative_Score", 0)) < 3
-    ]
+    priority_qs = []
+    normal_qs = []
+    for q in questions:
+        if int(q.get("Cumulative_Score", 0)) < 3:
+            # 優先順位（難易度）に応じて出題頻度（プールへの登録数）を増やす: 3なら3回, 2なら2回, 1なら1回
+            weight = int(q.get("Difficulty", 1))
+            is_prio = str(q.get("Is_Priority", "False")).lower() == "true"
+            for i in range(weight):
+                if is_prio:
+                    priority_qs.append((q, i))
+                else:
+                    normal_qs.append((q, i))
+                    
+    # 同じ問題が連続しないよう、シードとインデックスを含めてハッシュ化してソート
+    priority_qs.sort(key=lambda x: hashlib.md5(f"{seed}_p_{x[0].get('_row_number')}_{x[1]}".encode()).hexdigest())
+    normal_qs.sort(key=lambda x: hashlib.md5(f"{seed}_n_{x[0].get('_row_number')}_{x[1]}".encode()).hexdigest())
     
-    def get_sort_key(q):
-        return hashlib.md5(f"{seed}_{q.get('_row_number')}".encode()).hexdigest()
-        
-    normal_qs.sort(key=get_sort_key)
-    quiz_pool = priority_qs + normal_qs
+    quiz_pool = [x[0] for x in priority_qs] + [x[0] for x in normal_qs]
 
     if not quiz_pool:
         st.success("🎉 全問マスターしました！おめでとうございます！")
@@ -511,7 +513,8 @@ def page_quiz() -> None:
     q = quiz_pool[idx]
 
     # ─── 問題表示 ───
-    remaining_count = len(quiz_pool)
+    # 残り問題数はユニークな問題数として表示
+    remaining_count = len(set(q.get("_row_number") for q in quiz_pool))
     difficulty = int(q.get("Difficulty", 1))
     stars = "★" * difficulty + "☆" * (3 - difficulty)
     diff_class = f"diff-{difficulty}"
